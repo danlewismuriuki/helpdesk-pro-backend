@@ -1,0 +1,186 @@
+# ===============================
+# SPRING BOOT CONFIGURATION
+# ===============================
+spring:
+  application:
+    name: helpdesk-pro-backend
+
+  # Profile Configuration
+  profiles:
+    active: ${SPRING_PROFILE:dev}
+
+  # Database Configuration
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/helpdesk_db}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+    # Connection Pool (HikariCP)
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: HelpDeskHikariPool
+
+  # JPA/Hibernate Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate  # Don't auto-generate schema, use Flyway
+    show-sql: false
+    open-in-view: false  # Avoid performance issues
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+
+  # Flyway Database Migrations
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  # Redis Configuration (for caching)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 60000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  # Caching
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10 minutes
+
+  # Security
+  security:
+    user:
+      name: admin
+      password: admin  # Override in production!
+
+  # Jackson (JSON Serialization)
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+
+# ===============================
+# SERVER CONFIGURATION
+# ===============================
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# ===============================
+# JWT CONFIGURATION
+# ===============================
+jwt:
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
+
+# ===============================
+# ACTUATOR (MONITORING)
+# ===============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# ===============================
+# LOGGING CONFIGURATION
+# ===============================
+logging:
+  level:
+    root: INFO
+    com.helpdeskpro.backend: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/helpdesk-pro.log
+    max-size: 10MB
+    max-history: 30
+
+# ===============================
+# SPRINGDOC / SWAGGER
+# ===============================
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+  show-actuator: false
+
+# ===============================
+# APPLICATION CUSTOM PROPERTIES
+# ===============================
+app:
+  name: HelpDesk Pro
+  version: 0.0.1-SNAPSHOT
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200,http://localhost:3000}
+    allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
+
+  # SLA Configuration (in minutes)
+  sla:
+    critical: 240    # 4 hours
+    high: 1440       # 24 hours
+    medium: 4320     # 3 days
+    low: 10080       # 7 days
+
+  # File Upload
+  upload:
+    max-file-size: 10MB
+    max-request-size: 10MB
+    allowed-extensions: pdf,doc,docx,xls,xlsx,png,jpg,jpeg,gif
