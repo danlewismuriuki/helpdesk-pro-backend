@@ -6,17 +6,21 @@ import com.helpdeskpro.backend.dto.response.AuthResponse;
 import com.helpdeskpro.backend.entity.User;
 import com.helpdeskpro.backend.repository.UserRepository;
 import com.helpdeskpro.backend.security.JwtUtil;
+import com.helpdeskpro.backend.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Authentication Service
+ * Handles user login and registration
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -28,24 +32,35 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
+    /**
+     * Login user with email and password
+     * Returns JWT token and user details
+     */
     public AuthResponse login(LoginRequest request) {
-        log.info("User login attempt: {}", request.getUsername());
+        log.info("User login attempt: {}", request.getEmail());
 
+        // Step 1: Authenticate with Spring Security
+        // This calls CustomUserDetailsService.loadUserByUsername(email)
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                        request.getEmail(),    // ← Using EMAIL as username
                         request.getPassword()
                 )
         );
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtUtil.generateToken(userDetails);
+        // Step 2: Extract UserPrincipal from authentication
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
-        User user = userRepository.findByUsername(request.getUsername())
+        // Step 3: Generate JWT token with UserPrincipal
+        String token = jwtUtil.generateToken(userPrincipal);
+
+        // Step 4: Load full user details from database
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        log.info("User logged in successfully: {}", request.getUsername());
+        log.info("User logged in successfully: {} (ID: {})", user.getEmail(), user.getId());
 
+        // Step 5: Return authentication response
         return AuthResponse.builder()
                 .token(token)
                 .type("Bearer")
@@ -56,9 +71,14 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * Register new user
+     * Auto-login after successful registration
+     */
     public AuthResponse register(RegisterRequest request) {
-        log.info("User registration attempt: {}", request.getUsername());
+        log.info("User registration attempt: {}", request.getEmail());
 
+        // Step 1: Validate uniqueness
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
         }
@@ -67,6 +87,7 @@ public class AuthService {
             throw new IllegalArgumentException("Email already exists");
         }
 
+        // Step 2: Create new user entity
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -78,17 +99,15 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
-        log.info("User registered successfully: {}", savedUser.getUsername());
+        log.info("User registered successfully: {} (ID: {})", savedUser.getEmail(), savedUser.getId());
 
-        // Auto-login after registration
-        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                .username(savedUser.getUsername())
-                .password(savedUser.getPassword())
-                .authorities("ROLE_" + savedUser.getRole().name())
-                .build();
+        // Step 3: Create UserPrincipal for auto-login
+        UserPrincipal userPrincipal = UserPrincipal.create(savedUser);
 
-        String token = jwtUtil.generateToken(userDetails);
+        // Step 4: Generate JWT token
+        String token = jwtUtil.generateToken(userPrincipal);
 
+        // Step 5: Return authentication response
         return AuthResponse.builder()
                 .token(token)
                 .type("Bearer")
