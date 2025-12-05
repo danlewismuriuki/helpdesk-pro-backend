@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -100,25 +101,29 @@ public class SecurityConfig {
                             response.setContentType("application/json");
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-                            Map<String, Object> body = new HashMap<>();
-                            body.put("success", false);
-                            body.put("message", "Authentication required");
-                            body.put("statusCode", 401);
+                            Map<String, Object> errorDetails = new HashMap<>();
+                            errorDetails.put("timestamp", LocalDateTime.now().toString());
+                            errorDetails.put("status", 401);
+                            errorDetails.put("error", "Unauthorized");
+                            errorDetails.put("message", "Authentication required");
+                            errorDetails.put("path", request.getRequestURI());
 
                             ObjectMapper mapper = new ObjectMapper();
-                            response.getWriter().write(mapper.writeValueAsString(body));
+                            response.getWriter().write(mapper.writeValueAsString(errorDetails));
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setContentType("application/json");
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-                            Map<String, Object> body = new HashMap<>();
-                            body.put("success", false);
-                            body.put("message", "You do not have permission to perform this action");
-                            body.put("statusCode", 403);
+                            Map<String, Object> errorDetails = new HashMap<>();
+                            errorDetails.put("timestamp", LocalDateTime.now().toString());
+                            errorDetails.put("status", 403);
+                            errorDetails.put("error", "Forbidden");
+                            errorDetails.put("message", "Access denied");
+                            errorDetails.put("path", request.getRequestURI());
 
                             ObjectMapper mapper = new ObjectMapper();
-                            response.getWriter().write(mapper.writeValueAsString(body));
+                            response.getWriter().write(mapper.writeValueAsString(errorDetails));
                         })
                 )
                 .authenticationProvider(authenticationProvider())

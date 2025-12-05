@@ -149,13 +149,35 @@ class TicketIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
     }
 
+//    @Test
+//    @DisplayName("Customer should not be able to assign tickets")
+//    void assignTicket_AsCustomer_ShouldFail() throws Exception {
+//        String ticketId = createTicket("Test Ticket", TicketPriority.MEDIUM);
+//
+//        mockMvc.perform(put("/api/v1/tickets/" + ticketId + "/assign")
+//                        .header("Authorization", "Bearer " + customerToken))
+//                .andExpect(status().isForbidden());
+//    }
+
     @Test
     @DisplayName("Customer should not be able to assign tickets")
     void assignTicket_AsCustomer_ShouldFail() throws Exception {
         String ticketId = createTicket("Test Ticket", TicketPriority.MEDIUM);
 
+        // Get agent ID to include in request body
+        String response = mockMvc.perform(get("/api/v1/users/me")
+                        .header("Authorization", "Bearer " + agentToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String agentId = objectMapper.readTree(response).get("data").get("id").asText();
+
+        // Customer tries to assign ticket - should fail with 403
+        String requestBody = String.format("{\"agentId\": %s}", agentId);
+
         mockMvc.perform(put("/api/v1/tickets/" + ticketId + "/assign")
-                        .header("Authorization", "Bearer " + customerToken))
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
                 .andExpect(status().isForbidden());
     }
 
