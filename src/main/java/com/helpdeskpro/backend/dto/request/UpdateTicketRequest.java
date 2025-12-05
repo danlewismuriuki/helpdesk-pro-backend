@@ -4,9 +4,11 @@ import com.helpdeskpro.backend.entity.enums.TicketPriority;
 import com.helpdeskpro.backend.entity.enums.TicketStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateTicketRequest {

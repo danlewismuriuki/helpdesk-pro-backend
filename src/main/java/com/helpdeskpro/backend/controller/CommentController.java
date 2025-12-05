@@ -24,7 +24,6 @@ import java.util.List;
  * Handles all comment-related API endpoints
  */
 @RestController
-@RequestMapping("/api/v1/tickets/{ticketId}/comments")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Comments", description = "Comment management endpoints for tickets")
@@ -33,12 +32,14 @@ public class CommentController {
 
     private final CommentService commentService;
 
+    // ==================== TICKET-SCOPED ENDPOINTS ====================
+    // Pattern: /api/v1/tickets/{ticketId}/comments
+
     /**
      * Create a new comment on a ticket
-     *
      * POST /api/v1/tickets/{ticketId}/comments
      */
-    @PostMapping
+    @PostMapping("/api/v1/tickets/{ticketId}/comments")
     @Operation(
             summary = "Add comment to ticket",
             description = "Create a new comment on a ticket. Only ticket creator, assigned agent, or admins can comment."
@@ -59,10 +60,9 @@ public class CommentController {
 
     /**
      * Get all comments for a ticket
-     *
      * GET /api/v1/tickets/{ticketId}/comments
      */
-    @GetMapping
+    @GetMapping("/api/v1/tickets/{ticketId}/comments")
     @Operation(
             summary = "Get ticket comments",
             description = "Retrieve all comments for a ticket in chronological order (oldest first)"
@@ -84,13 +84,82 @@ public class CommentController {
     }
 
     /**
-     * Update a comment
-     *
-     * PUT /api/v1/tickets/{ticketId}/comments/{commentId}
+     * Get comment count for a ticket
+     * GET /api/v1/tickets/{ticketId}/comments/count
      */
-    @PutMapping("/{commentId}")
+    @GetMapping("/api/v1/tickets/{ticketId}/comments/count")
+    @Operation(
+            summary = "Get comment count",
+            description = "Get the total number of comments on a ticket"
+    )
+    public ResponseEntity<ApiResponse<Long>> getCommentCount(@PathVariable Long ticketId) {
+        log.info("Fetching comment count for ticket {}", ticketId);
+
+        Long count = commentService.getCommentCount(ticketId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(count, String.format("Ticket has %d comments", count))
+        );
+    }
+
+    // ==================== DIRECT COMMENT ENDPOINTS ====================
+    // Pattern: /api/v1/comments/{commentId}
+    // Used for updating/deleting comments without needing ticket context
+
+    /**
+     * Update a comment directly by ID
+     * PUT /api/v1/comments/{commentId}
+     */
+    @PutMapping("/api/v1/comments/{commentId}")
     @Operation(
             summary = "Update comment",
+            description = "Update a comment. Only the comment creator or admin can update."
+    )
+    public ResponseEntity<ApiResponse<CommentResponse>> updateCommentDirect(
+            @PathVariable Long commentId,
+            @Valid @RequestBody UpdateCommentRequest request,
+            @CurrentUser UserPrincipal currentUser) {
+
+        log.info("User {} updating comment {}", currentUser.getId(), commentId);
+
+        CommentResponse comment = commentService.updateComment(commentId, request, currentUser.getId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success(comment, "Comment updated successfully")
+        );
+    }
+
+    /**
+     * Delete a comment directly by ID
+     * DELETE /api/v1/comments/{commentId}
+     */
+    @DeleteMapping("/api/v1/comments/{commentId}")
+    @Operation(
+            summary = "Delete comment",
+            description = "Soft delete a comment. Only the comment creator or admin can delete."
+    )
+    public ResponseEntity<Void> deleteCommentDirect(
+            @PathVariable Long commentId,
+            @CurrentUser UserPrincipal currentUser) {
+
+        log.info("User {} deleting comment {}", currentUser.getId(), commentId);
+
+        commentService.deleteComment(commentId, currentUser.getId());
+
+        return ResponseEntity.noContent().build(); // Returns 204 No Content
+    }
+
+    // ==================== LEGACY TICKET-SCOPED UPDATE/DELETE ====================
+    // These are kept for backward compatibility if needed
+    // Pattern: /api/v1/tickets/{ticketId}/comments/{commentId}
+
+    /**
+     * Update a comment (with ticket context)
+     * PUT /api/v1/tickets/{ticketId}/comments/{commentId}
+     */
+    @PutMapping("/api/v1/tickets/{ticketId}/comments/{commentId}")
+    @Operation(
+            summary = "Update comment (ticket-scoped)",
             description = "Update a comment. Only the comment creator can update their own comment."
     )
     public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
@@ -110,16 +179,15 @@ public class CommentController {
     }
 
     /**
-     * Delete a comment
-     *
+     * Delete a comment (with ticket context)
      * DELETE /api/v1/tickets/{ticketId}/comments/{commentId}
      */
-    @DeleteMapping("/{commentId}")
+    @DeleteMapping("/api/v1/tickets/{ticketId}/comments/{commentId}")
     @Operation(
-            summary = "Delete comment",
+            summary = "Delete comment (ticket-scoped)",
             description = "Soft delete a comment. Only the comment creator or admin can delete."
     )
-    public ResponseEntity<ApiResponse<Void>> deleteComment(
+    public ResponseEntity<Void> deleteComment(
             @PathVariable Long ticketId,
             @PathVariable Long commentId,
             @CurrentUser UserPrincipal currentUser) {
@@ -129,28 +197,6 @@ public class CommentController {
 
         commentService.deleteComment(commentId, currentUser.getId());
 
-        return ResponseEntity.ok(
-                ApiResponse.success(null, "Comment deleted successfully")
-        );
-    }
-
-    /**
-     * Get comment count for a ticket
-     *
-     * GET /api/v1/tickets/{ticketId}/comments/count
-     */
-    @GetMapping("/count")
-    @Operation(
-            summary = "Get comment count",
-            description = "Get the total number of comments on a ticket"
-    )
-    public ResponseEntity<ApiResponse<Long>> getCommentCount(@PathVariable Long ticketId) {
-        log.info("Fetching comment count for ticket {}", ticketId);
-
-        Long count = commentService.getCommentCount(ticketId);
-
-        return ResponseEntity.ok(
-                ApiResponse.success(count, String.format("Ticket has %d comments", count))
-        );
+        return ResponseEntity.noContent().build(); // Returns 204 No Content
     }
 }

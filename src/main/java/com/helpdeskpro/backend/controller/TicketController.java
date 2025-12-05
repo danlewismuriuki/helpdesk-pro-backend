@@ -115,13 +115,21 @@ public class TicketController {
         TicketResponse ticket = ticketService.updateTicket(id, request);
         return ResponseEntity.ok(ApiResponse.success(ticket, "Ticket updated successfully"));
     }
+//
+//    @DeleteMapping("/{id}")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    @Operation(summary = "Delete ticket", description = "Soft delete a ticket (Admin only)")
+//    public ResponseEntity<ApiResponse<Void>> deleteTicket(@PathVariable Long id) {
+//        ticketService.deleteTicket(id);
+//        return ResponseEntity.ok(ApiResponse.success(null, "Ticket deleted successfully"));
+//    }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete ticket", description = "Soft delete a ticket (Admin only)")
-    public ResponseEntity<ApiResponse<Void>> deleteTicket(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteTicket(@PathVariable Long id) {
         ticketService.deleteTicket(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Ticket deleted successfully"));
+        return ResponseEntity.noContent().build(); // Returns 204 No Content (not 200)
     }
 
     // ==================== NEW: ASSIGNMENT ENDPOINTS ====================

@@ -49,7 +49,7 @@ public class CommentService {
         if (!canCommentOnTicket(user, ticket)) {
             throw new InvalidOperationException(
                     "You do not have permission to comment on this ticket. " +
-                            "Only the ticket creator, assigned agent, or admins can comment."
+                            "Only the ticket creator, an assigned agent, or admins can comment."
             );
         }
 
@@ -95,13 +95,17 @@ public class CommentService {
 
     /**
      * Update a comment
-     * Business Rule: Only the comment creator can update their own comment
+     * Business Rule: Only the comment creator or an admin can update
      */
     public CommentResponse updateComment(Long commentId, UpdateCommentRequest request, Long userId) {
         log.info("Updating comment {} by user {}", commentId, userId);
 
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
+        // Use findWithCreatorById if available, otherwise findById
+        Comment comment = commentRepository.findWithCreatorById(commentId)
+                .filter(c -> c.getDeletedAt() == null) // Filter out soft-deleted comments
+                .orElseGet(() -> commentRepository.findById(commentId)
+                        .filter(c -> c.getDeletedAt() == null)
+                        .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId)));
 
         User user = userService.getUserEntityById(userId);
 
@@ -120,13 +124,17 @@ public class CommentService {
 
     /**
      * Delete a comment (soft delete)
-     * Business Rule: Only comment creator or admin can delete
+     * Business Rule: Only the comment creator or an admin can delete
      */
     public void deleteComment(Long commentId, Long userId) {
         log.info("Deleting comment {} by user {}", commentId, userId);
 
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
+        // Use findWithCreatorById if available, otherwise findById
+        Comment comment = commentRepository.findWithCreatorById(commentId)
+                .filter(c -> c.getDeletedAt() == null) // Filter out already soft-deleted comments
+                .orElseGet(() -> commentRepository.findById(commentId)
+                        .filter(c -> c.getDeletedAt() == null)
+                        .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId)));
 
         User user = userService.getUserEntityById(userId);
 

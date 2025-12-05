@@ -56,6 +56,12 @@ public class TicketService {
     public TicketResponse getTicketById(Long id) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", id));
+
+        // FIX: Check if the ticket has been soft-deleted
+        if (ticket.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("Ticket", "id", id);
+        }
+
         return mapToResponse(ticket);
     }
 

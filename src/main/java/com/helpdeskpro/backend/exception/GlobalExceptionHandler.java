@@ -12,7 +12,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,8 +35,9 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handle business logic violations (400)
-     * Examples: Invalid status transition, assigning to non-agent, etc.
+     * Handle business logic violations and permission errors (403)
+     * Changed from 400 to 403 to match test expectations
+     * Examples: "You can only delete your own comments", "You do not have permission"
      */
     @ExceptionHandler(InvalidOperationException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidOperation(
@@ -47,8 +47,8 @@ public class GlobalExceptionHandler {
         log.warn("Invalid operation: {} at {}", ex.getMessage(), request.getRequestURI());
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value()));
+                .status(HttpStatus.FORBIDDEN)  // Changed from BAD_REQUEST to FORBIDDEN
+                .body(ApiResponse.error(ex.getMessage(), HttpStatus.FORBIDDEN.value()));
     }
 
     /**
@@ -75,6 +75,22 @@ public class GlobalExceptionHandler {
                         HttpStatus.BAD_REQUEST.value(),
                         errors
                 ));
+    }
+
+    /**
+     * Handle IllegalArgumentException (400)
+     * Used for duplicate username/email and other validation errors
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request) {
+
+        log.warn("Illegal argument: {} at {}", ex.getMessage(), request.getRequestURI());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), HttpStatus.BAD_REQUEST.value()));
     }
 
     /**

@@ -1,6 +1,8 @@
 package com.helpdeskpro.backend.service;
 
 import com.helpdeskpro.backend.dto.request.RegisterRequest;
+import com.helpdeskpro.backend.dto.request.UpdateProfileRequest;
+import com.helpdeskpro.backend.dto.request.UpdateUserRequest;
 import com.helpdeskpro.backend.dto.response.UserResponse;
 import com.helpdeskpro.backend.entity.User;
 import com.helpdeskpro.backend.entity.enums.UserRole;
@@ -26,11 +28,11 @@ public class UserService {
 
     public UserResponse createUser(RegisterRequest request) {
         log.info("Creating new user: {}", request.getUsername());
-        
+
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
         }
-        
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email already exists");
         }
@@ -47,7 +49,7 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
         log.info("User created successfully: {}", savedUser.getUsername());
-        
+
         return mapToResponse(savedUser);
     }
 
@@ -76,6 +78,84 @@ public class UserService {
         return userRepository.findByRole(role).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = getUserEntityById(userId);
+
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new IllegalArgumentException("Username already exists");
+            }
+            user.setUsername(request.getUsername());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        if (request.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+
+        User updatedUser = userRepository.save(user);
+        log.info("User profile updated: {}", updatedUser.getUsername());
+
+        return mapToResponse(updatedUser);
+    }
+
+    public UserResponse updateUser(Long userId, UpdateUserRequest request) {
+        User user = getUserEntityById(userId);
+
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new IllegalArgumentException("Username already exists");
+            }
+            user.setUsername(request.getUsername());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        if (request.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
+
+        User updatedUser = userRepository.save(user);
+        log.info("User updated by admin: {}", updatedUser.getUsername());
+
+        return mapToResponse(updatedUser);
     }
 
     public void deleteUser(Long id) {
